@@ -60,7 +60,7 @@ class Chain(str):
 
 class Microstate(object):
 
-    chain = ''
+    #chain = ''
     
     def __init__(self, coords, energy=10000):
         self.coords = coords
@@ -71,6 +71,17 @@ class Microstate(object):
 
     def transform(self):
         pass
+
+
+class Metropolis(object):
+    pass
+
+
+class SimulatedAnnealing(object):
+    
+    def __init__(self, **kwargs):
+        kwargs.update({'chain': Chain(kwargs.pop('sequence'))})
+        self.__dict__.update(kwargs)
 
 
 def main():
@@ -90,8 +101,7 @@ def main():
 
     (options, args) = parser.parse_args()
     
-    Microstate.chain = Chain(options.sequence)
-
+    simulation = SimulatedAnnealing(**options.__dict__)
 
 if __name__ == '__main__':
     main()
