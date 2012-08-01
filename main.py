@@ -38,25 +38,24 @@ class R270(Rotation):
     matrix = RotationMatrix(1.5*math.pi)
 
 
-class Aminoacid(object):
-    """ ??? """
-    
+class Aminoacid(str):
+
     HYDROPHOBIC = 'H'
     POLAR = 'P'
-
-    def __init__(self, symbol):
-        self.symbol = symbol
-
-    def isPolar(self):
-        return self.symbol == POLAR
+    
+    def isHydrophobic(self):
+        return self is self.HYDROPHOBIC
 
 
-class Chain(object):
-
-    def __init__(self, sequence):
-        if not re.match('[HP]+$', sequence):
+class Chain(str):
+    
+    def __getitem__(self, index):
+        return Aminoacid(str.__getitem__(self, index))
+        
+    def __new__(self, value): 
+        if not re.match('[HP]+$', value):
             raise ValueError("Sequence should consist of 'H' and 'P' characters")
-        self.sequence = sequence
+        return str.__new__(self, value)
 
 
 class Microstate(object):
@@ -79,7 +78,7 @@ def main():
     parser = OptionParser(usage="usage: %prog [options]", version="%prog 1.0")
 
     parser.add_option('-s', '--sequence', dest='sequence', \
-            help='protein sequence, ex. "HPHPHPHPPHPH"')
+            default='', help='protein sequence, ex. "HPHPHPHPPHPH"')
     parser.add_option('-i', '--maximum', type='float', dest='tMax', \
             default=1.0, help='initial temperature')
     parser.add_option('-f', '--minimum', type='float', dest='tMin', \
@@ -92,6 +91,7 @@ def main():
     (options, args) = parser.parse_args()
     
     Microstate.chain = Chain(options.sequence)
+
 
 if __name__ == '__main__':
     main()
