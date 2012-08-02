@@ -2,6 +2,7 @@
 
 import math
 import numpy as np
+import random
 import re
 import sys
 
@@ -16,10 +17,13 @@ class RotationMatrix(np.ndarray):
 
 class Rotation(object):
 
+    matrix = RotationMatrix(0)
+    
     def __init__(self, point):
         self.point = point
     
     def rotate(self):
+        #print self.matrix, self.point
         pass
 
 
@@ -60,21 +64,30 @@ class Chain(str):
 
 class Microstate(object):
 
-    #chain = ''
+    FREE = 0
     
-    def __init__(self, coords, energy=10000):
+    def __init__(self, coords):
         self.coords = coords
-        self.energy = energy
-    
-    def setEnergy(self):
-        pass
+   
+    def calculateEnergy(self):
+        pass 
 
     def transform(self):
+        """ returns next microstate """
+        print random.choice(self.coords)
         pass
+    
+    @staticmethod
+    def getInitialCoords(chain):
+        size = len(chain)
+        return np.roll(np.vstack((np.zeros((size-1, size)), \
+                [char for char in chain])), size/2, axis=0)
 
 
 class Metropolis(object):
-    pass
+    
+    def metropolis():
+        pass
 
 
 class SimulatedAnnealing(object):
@@ -102,6 +115,13 @@ def main():
     (options, args) = parser.parse_args()
     
     simulation = SimulatedAnnealing(**options.__dict__)
+    a=R90(0.5)
+    a.rotate()
+    b=Metropolis()
+    c = Microstate.getInitialCoords(simulation.chain)
+    #print c, type(c)
+    d = Microstate(c)
+    d.transform()
 
 if __name__ == '__main__':
     main()
