@@ -1,5 +1,9 @@
 #! /usr/bin/env python
 
+#
+# python 2.7
+#
+
 import math
 import numpy as np
 import random
@@ -17,54 +21,47 @@ class RotationMatrix(np.ndarray):
 
 class Rotation(object):
 
-    matrix = RotationMatrix(0)
+    matrices = [RotationMatrix(angle) \
+            for angle in [0.5*math.pi, math.pi, 1.5*math.pi]]
     
     def __init__(self, point):
         self.point = point
     
-    def rotate(self):
-        #print self.matrix, self.point
-        pass
+    def rotate(self, inputDict):           #TODO improve
+        matrix = random.choice(self.matrices)
+        index = inputDict.get(self.point).id
+        newCoords = {}
+        for key in inputDict:
+            aminoacid = inputDict.get(key)
+            if aminoacid.id > index:
+                key = tuple(np.add(self.point,\
+                        np.dot(matrix,np.subtract(key,self.point))))
+            if not newCoords.get(key, 0):
+                newCoords[key] = aminoacid
+            else:
+                return {}
+        return newCoords
 
 
-class R90(Rotation):
-
-    matrix = RotationMatrix(0.5*math.pi)
-
-
-class R180(Rotation):
-
-    matrix = RotationMatrix(math.pi)
-
-
-class R270(Rotation):
-
-    matrix = RotationMatrix(1.5*math.pi)
-
-
-class Aminoacid(str):
+class Aminoacid(object):
 
     HYDROPHOBIC = 'H'
     POLAR = 'P'
-    
-    def isHydrophobic(self):
-        return self is self.HYDROPHOBIC
+
+    def __init__(self, id, symbol):
+        self.id = id
+        self.symbol = symbol
 
 
-class Chain(str):
-    
-    def __getitem__(self, index):
-        return Aminoacid(str.__getitem__(self, index))
-        
-    def __new__(self, value): 
-        if not re.match('[HP]+$', value):
+class Chain(list):
+
+    def __new__(self, sequence): 
+        if not re.match('[HP]+$', sequence):
             raise ValueError("Sequence should consist of 'H' and 'P' characters")
-        return str.__new__(self, value)
+        return [Aminoacid(index,char) for index, char in enumerate(sequence)]
 
 
 class Microstate(object):
-
-    FREE = 0
     
     def __init__(self, coords):
         self.coords = coords
@@ -74,14 +71,15 @@ class Microstate(object):
 
     def transform(self):
         """ returns next microstate """
-        print random.choice(self.coords)
-        pass
+        newCoords = {}
+        while not newCoords:
+            rotationPoint = random.choice(self.coords.keys())
+            newCoords = Rotation(rotationPoint).rotate(self.coords)
+        return Microstate(newCoords)
     
     @staticmethod
     def getInitialCoords(chain):
-        size = len(chain)
-        return np.roll(np.vstack((np.zeros((size-1, size)), \
-                [char for char in chain])), size/2, axis=0)
+        return {(len(chain)/2,v):k for v,k in enumerate(chain)}
 
 
 class Metropolis(object):
@@ -115,13 +113,12 @@ def main():
     (options, args) = parser.parse_args()
     
     simulation = SimulatedAnnealing(**options.__dict__)
-    a=R90(0.5)
-    a.rotate()
     b=Metropolis()
     c = Microstate.getInitialCoords(simulation.chain)
     #print c, type(c)
     d = Microstate(c)
     d.transform()
+    print d.coords
 
 if __name__ == '__main__':
     main()
