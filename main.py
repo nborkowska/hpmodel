@@ -8,7 +8,6 @@ import math
 import numpy as np
 import random
 import re
-import sys
 
 from matplotlib import pyplot as plt
 from matplotlib import cm
@@ -152,6 +151,7 @@ class Metropolis(object):
                 state = newState
             microstates.append(state)
             noSteps -= 1
+        print len(microstates)
         return microstates
 
 class Output(object):
