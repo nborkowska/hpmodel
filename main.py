@@ -151,7 +151,6 @@ class Metropolis(object):
                 state = newState
             microstates.append(state)
             noSteps -= 1
-        print len(microstates)
         return microstates
 
 class Output(object):
@@ -196,7 +195,8 @@ class SimulatedAnnealing(object):
         Output.plotResult(temp, separated[0], 'cv' , 'T', 'Cv (T)')
         Output.plotResult(temp, separated[1], 'averageI' , 'T', '<I> (T)')
         for index, res in enumerate(separated[2]):
-            plt.bar(res, range(len(res)))
+            a=dict((i,res.count(i)) for i in res)
+            plt.bar(a.keys(),a.values())
             plt.xlabel('n of contacts')
             plt.ylabel('counts')
             plt.title('T=%s' % temp[index])
