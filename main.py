@@ -196,11 +196,12 @@ class SimulatedAnnealing(object):
         Output.plotResult(temp, separated[1], 'averageI' , 'T', '<I> (T)')
         for index, res in enumerate(separated[2]):
             a=dict((i,res.count(i)) for i in res)
-            plt.bar(a.keys(),a.values())
+            plt.bar(a.keys(),a.values(), color='g')
+            plt.xlim(0,10)
             plt.xlabel('n of contacts')
             plt.ylabel('counts')
             plt.title('T=%s' % temp[index])
-            plt.savefig('contacts_countT%s.svg' % temp[index])
+            plt.savefig('contacts_countT%s.png' % temp[index])
             plt.close()
 
     def start(self):
