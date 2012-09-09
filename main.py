@@ -27,11 +27,25 @@ def main():
     parser.add_option('-d', '--delta', type='float', dest='delta', \
             default=0.05, help='temperature decrement factor')
     parser.add_option('-k', '--transitions', type='int', dest='noTransitions',\
-            default=10000, help='the length of the k-th Markov chain')
+            default=10, help='the length of the k-th Markov chain')
+    parser.add_option('-r', '--replicas', type='int', dest='replicas',\
+            default=5, help='no of replicas')
+    parser.add_option('-l', '--length', type='int', dest='length',\
+            default=100, help='simulation length')
+    parser.add_option('-e', '--frequency', type='int', dest='frequency',\
+            default=10, help='frequency of replica exchange')
+    parser.add_option('-t', '--type', type='choice', dest='type',\
+            choices=['sa', 're'], default='re', \
+            help='type of simulation: simulated annealing or replica exchange')
 
+    #TODO check if combination of args is appropriate
     (options, args) = parser.parse_args()
     
-    simulation = SimulatedAnnealing(**options.__dict__)
+    if options.type == 're':
+        simulation = ReplicaExchange(**options.__dict__)
+    else:
+        simulation = SimulatedAnnealing(**options.__dict__)
+    
     simulation.start()
 
 def getId():
@@ -153,6 +167,7 @@ class Metropolis(object):
             noSteps -= 1
         return microstates
 
+
 class Output(object):
     """ class responsible for plotting etc """
 
@@ -163,16 +178,57 @@ class Output(object):
         plt.ylabel(labely)
         plt.savefig('%s.svg' % name)
         plt.close()
-    
 
-class SimulatedAnnealing(object):
-    """ Main class """
+
+class Simulation(object):
 
     kb = 1.0
-
+    
     def __init__(self, **kwargs):
         kwargs.update({'chain': Chain(kwargs.pop('sequence'))})
         self.__dict__.update(kwargs)
+
+
+class ReplicaExchange(Simulation):
+    
+    #TODO tmax, tmin etc should not be saved as object attributes,
+    # because they're no longer needed;
+    # replicas could be objects
+    def __init__(self, **kwargs):
+        super(ReplicaExchange, self).__init__(**kwargs)
+    
+    def start(self):
+        d = (self.tMax-self.tMin)/(self.replicas-1)
+        temps = [self.tMin+d*x for x in xrange(self.replicas)]
+        initialState = Microstate(Microstate.getInitialCoords(self.chain))
+        length = self.length
+        result = []
+        while length:
+            states = []
+            for temp in temps:
+                states.append(Metropolis().metropolis(self.chain, 
+                    self.noTransitions, initialState, temp, self.kb))
+            if not length % self.frequency:
+                r = random.choice(range(self.replicas))
+                i = [r-1, r] if r else [r, r+1] 
+                replicas = states[i[0]:i[1]+1]
+                delta = (1/(self.kb*temps[i[1]]) - 1/(self.kb*temps[i[0]]))\
+                        *(states[i[0]][-1].energy - states[i[1]][-1].energy)
+                prob = min(1, math.e**(-delta))
+                if random.random() < prob:
+                    states[i[0]] = replicas[1]
+                    states[i[1]] = replicas[0]
+                    #print 'zamiana!'
+            result.append(states)
+            length -= 1
+        
+        tMinResult=[x[0] for x in result]
+
+
+class SimulatedAnnealing(Simulation):
+
+    def __init__(self, **kwargs):
+        super(SimulatedAnnealing, self).__init__(**kwargs)
 
     def countCV(self, microstates, temp):
         energies = [x.energy for x in microstates]
@@ -200,7 +256,7 @@ class SimulatedAnnealing(object):
             plt.xlabel('n of contacts')
             plt.ylabel('counts')
             plt.title('T=%s' % temp[index])
-            plt.savefig('contacts_countT%s.svg' % temp[index])
+            plt.savefig('contacts_countT%s.png' % temp[index])
             plt.close()
 
     def start(self):
