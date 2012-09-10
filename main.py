@@ -232,7 +232,7 @@ class Simulation(object):
                             'ATOM      %d  CA  %s   %d  A     %r   %r   0.000\n'%\
                             (value.Id+1, \
                             'LYS' if value.symbol is Aminoacid.POLAR else 'ALA',
-                            value.Id+1, key[0], key[1])
+                            value.Id+1, float(key[0]), float(key[1]))
                 traj.write(''.join(lines)+'ENDMDL\n')
         traj.close()
 
@@ -251,14 +251,15 @@ class ReplicaExchange(Simulation):
     def start(self):
         d = (self.tMax-self.tMin)/(self.replicas-1)
         temps = [self.tMin+d*x for x in xrange(self.replicas)]
-        initialState = Microstate(Microstate.getInitialCoords(self.chain))
+        initialStates = \
+                [Microstate(Microstate.getInitialCoords(self.chain))]*len(temps)
         length = self.length
         result = []
         while length:
             states = []
-            for temp in temps:
+            for x, temp in enumerate(temps):
                 states.append(Metropolis().metropolis(self.chain, 
-                    self.noTransitions, initialState, temp, self.kb))
+                    self.noTransitions, initialStates[x], temp, self.kb))
             if not length % self.frequency:
                 r = random.choice(range(self.replicas))
                 i = [r-1, r] if r else [r, r+1] 
@@ -269,7 +270,8 @@ class ReplicaExchange(Simulation):
                 if random.random() < prob:
                     states[i[0]] = replicas[1]
                     states[i[1]] = replicas[0]
-                    #print 'zamiana!'
+                    print 'exchange!'
+            initialStates = [state[-1] for state in states]
             result.append(states)
             length -= 1
         
