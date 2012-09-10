@@ -187,6 +187,57 @@ class Simulation(object):
     def __init__(self, **kwargs):
         kwargs.update({'chain': Chain(kwargs.pop('sequence'))})
         self.__dict__.update(kwargs)
+    
+    def countCV(self, microstates, temp):
+        energies = [x.energy for x in microstates]
+        return np.var(energies)/(self.kb*(temp**2))
+
+    def countAvI(self, microstates):
+        """ get average moment of inertia """
+        Is = []
+        for state in microstates:
+            cOfMass = np.mean(state.coords.keys(), axis=0)
+            I = np.sum(np.power(np.subtract(state.coords.keys(),cOfMass),2),\
+                    axis=0)
+            Is.append(I)
+        return np.sum(np.mean(Is), axis=0)             
+    
+    def plotResults(self, results, **kwargs): #TODO
+        temp = kwargs.get('temp', [])
+        if not temp:
+            temp = [x/100.0 for x in xrange(int(self.tMax*100), \
+                    int((self.tMin-self.delta)*100), int(-self.delta*100))]
+        separated = zip(*results)
+        Output.plotResult(temp, separated[0], 'cv' , 'T', 'Cv (T)')
+        Output.plotResult(temp, separated[1], 'averageI' , 'T', '<I> (T)')
+        for index, res in enumerate(separated[2]):
+            a=dict((i,res.count(i)) for i in res)
+            plt.bar(a.keys(),a.values())
+            plt.xlabel('n of contacts')
+            plt.ylabel('counts')
+            plt.xlim(0, 10)
+            plt.title('T=%s' % temp[index])
+            plt.savefig('contacts_countT%s.png' % temp[index])
+            plt.close()
+    
+    def saveTraj(self, result):
+        traj = open("re_tMin.txt","wb")
+        for step in result:
+            for i, state in enumerate(step, 1):
+                traj.write('MODEL%d\nCOMMENT:    nOfContacts=%d\n' % (i, \
+                        state.contacts))
+                lines=['']*len(self.chain)
+                for key, value in state.coords.items():
+                    lines[value.Id]=\
+                            'ATOM      %d  CA  %s   %d  A     %r   %r   0.000\n'%\
+                            (value.Id+1, \
+                            'LYS' if value.symbol is Aminoacid.POLAR else 'ALA',
+                            value.Id+1, key[0], key[1])
+                traj.write(''.join(lines)+'ENDMDL\n')
+        traj.close()
+
+    def start(self):
+        raise NotImplementedError
 
 
 class ReplicaExchange(Simulation):
@@ -223,41 +274,20 @@ class ReplicaExchange(Simulation):
             length -= 1
         
         tMinResult=[x[0] for x in result]
+        self.saveTraj(tMinResult)
+        
+        """ simulated annealing - like """
+        lastResult=result[-1]
+        cvs = [self.countCV(x, temps[y]) for y, x in enumerate(lastResult)]
+        avis = [self.countAvI(x) for x in lastResult]
+        contacts = [[n.contacts for n in m] for m in lastResult]
+        self.plotResults(zip(cvs, avis, contacts), temp=temps)
 
 
 class SimulatedAnnealing(Simulation):
 
     def __init__(self, **kwargs):
         super(SimulatedAnnealing, self).__init__(**kwargs)
-
-    def countCV(self, microstates, temp):
-        energies = [x.energy for x in microstates]
-        return np.var(energies)/(self.kb*(temp**2))
-
-    def countAvI(self, microstates):
-        """ get average moment of inertia """
-        Is = []
-        for state in microstates:
-            cOfMass = np.mean(state.coords.keys(), axis=0)
-            I = np.sum(np.power(np.subtract(state.coords.keys(),cOfMass),2),\
-                    axis=0)
-            Is.append(I)
-        return np.sum(np.mean(Is), axis=0)             
-    
-    def plotResults(self, results): #TODO
-        temp = [x/100.0 for x in xrange(int(self.tMax*100), \
-                int((self.tMin-self.delta)*100), int(-self.delta*100))]
-        separated = zip(*results)
-        Output.plotResult(temp, separated[0], 'cv' , 'T', 'Cv (T)')
-        Output.plotResult(temp, separated[1], 'averageI' , 'T', '<I> (T)')
-        for index, res in enumerate(separated[2]):
-            a=dict((i,res.count(i)) for i in res)
-            plt.bar(a.keys(),a.values())
-            plt.xlabel('n of contacts')
-            plt.ylabel('counts')
-            plt.title('T=%s' % temp[index])
-            plt.savefig('contacts_countT%s.png' % temp[index])
-            plt.close()
 
     def start(self):
         result = []
